@@ -116,7 +116,6 @@ class OptionDataFetcher:
                 continue
 
         self.zc_curve = pd.DataFrame(results).sort_values(by='days_to_expiry').reset_index(drop=True)
-        return self.zc_curve
 
     def get_forward(self, expiry):
         """
@@ -184,6 +183,30 @@ class OptionDataFetcher:
         plt.title(f"Forward Curve for {self.ticker}")
         plt.legend()
         plt.grid(True)
+        plt.show()
+    
+    def plot_zc_curve(self):
+        """
+        Plot the zero-coupon rate curve.
+
+        Returns:
+            None
+        """
+        if self.zc_curve is None or self.zc_curve.empty:
+            raise ValueError("ZC curve not built. Please call build_ZC_curve() first.")
+
+        # Convert days to expiry into years for better visualization
+        years = self.zc_curve['days_to_expiry'] / 365.25
+        zero_rates = self.zc_curve['zero_rate']
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(years, zero_rates, marker='o', linestyle='-', label="Zero-Coupon Rate")
+
+        plt.xlabel('Maturity (Years)')
+        plt.ylabel('Zero Rate')
+        plt.title(f'Zero-Coupon Curve for {self.ticker}')
+        plt.grid(True)
+        plt.legend()
         plt.show()
 
 class OptionMaturity:
