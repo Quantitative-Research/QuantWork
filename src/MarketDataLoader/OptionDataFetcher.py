@@ -4,6 +4,7 @@ import pandas as pd
 from scipy.interpolate import interp1d, UnivariateSpline
 import numpy as np
 from .convex_projection import project_convex
+from .plot_helpers import show_plot
 
 class OptionDataFetcher:
     def __init__(self, ticker):
@@ -161,7 +162,7 @@ class OptionDataFetcher:
         plt.title(f"Forward Curve for {self.ticker}")
         plt.legend()
         plt.grid(True)
-        plt.show()
+        show_plot()
 
 
 class OptionMaturity:
@@ -270,7 +271,7 @@ class OptionMaturity:
         plt.ylabel("Implied Volatility")
         plt.legend()
         plt.grid(True)
-        plt.show()
+        show_plot()
 
     def plot_smile(self, option_type='OTM', x_axis='strike'):
         """
@@ -314,4 +315,4 @@ class OptionMaturity:
         plt.ylabel('Implied Volatility')
         plt.legend()
         plt.grid(True)
-        plt.show()
+        show_plot()
