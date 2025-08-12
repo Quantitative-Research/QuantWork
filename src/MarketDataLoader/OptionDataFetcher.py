@@ -1,8 +1,9 @@
 import yfinance as yf
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.interpolate import interp1d
-
+from scipy.interpolate import interp1d, UnivariateSpline
+import numpy as np
+from .convex_projection import project_convex
 
 class OptionDataFetcher:
     def __init__(self, ticker):
@@ -17,6 +18,38 @@ class OptionDataFetcher:
         """
         self.fetch_options()
         self.build_forward_curve()
+        self.build_vol_surface()
+
+    def build_vol_surface(self):
+        """
+        Build a volatility surface matrix from convex-projected smiles.
+        Rows: strikes
+        Columns: maturities
+        """
+        all_strikes = sorted({
+            strike
+            for maturity in self.option_maturities.values()
+            if maturity.cleaned_smile_hat is not None
+            for strike in maturity.cleaned_smile_hat['strike'].values
+        })
+
+        # Create empty DataFrame
+        vol_surface = pd.DataFrame(index=all_strikes)
+
+        # Fill with convex vols for each expiry
+        for expiry, maturity in self.option_maturities.items():
+            if maturity.cleaned_smile_hat is None:
+                continue
+            smile = maturity.cleaned_smile_hat
+            # Map strikes to vols, NaN for missing strikes
+            vol_series = pd.Series(
+                data=smile['impliedVolatility'].values,
+                index=smile['strike'].values
+            )
+            vol_surface[pd.to_datetime(expiry)] = vol_series.reindex(all_strikes)
+
+        self.vol_surface = vol_surface.sort_index(axis=1)
+        return self.vol_surface
 
     def fetch_options(self):
         stock = yf.Ticker(self.ticker)
@@ -131,35 +164,85 @@ class OptionDataFetcher:
         plt.show()
 
 
-
 class OptionMaturity:
     def __init__(self, expiry, calls, puts, spot_price):
-        self.expiry = expiry
-        self.calls = calls
-        self.puts = puts
+        self.expiry = pd.to_datetime(expiry)
+        self.calls = calls.copy()
+        self.puts = puts.copy()
         self.spot_price = spot_price
+        self.cleaned_smile = None
+        self.cleaned_smile_hat = None  
+        self._clean_data()
+        self._build_cleaned_smile()
+        self._project_convex_smile() 
+
+    def _clean_data(self):
+        """Remove NaN/invalid implied volatility rows."""
+        for df in [self.calls, self.puts]:
+            df.dropna(subset=['impliedVolatility'], inplace=True)
+            df = df[df['impliedVolatility'] > 0]
+            df.reset_index(drop=True, inplace=True)
+
+    @property
+    def otm_iv_df(self):
         """
-        Option data for a single maturity : smiles, prices of call/puts, forward.
-        In development : Bid/Ask Spread
+        Returns a cleaned DataFrame of OTM strikes and IV, sorted by strike.
         """
+        otm_calls = self.calls[self.calls['strike'] > self.spot_price]
+        otm_puts = self.puts[self.puts['strike'] < self.spot_price]
+
+        data = pd.concat([otm_calls, otm_puts])[['strike', 'impliedVolatility']]
+        data = data[(data['impliedVolatility'] > 0) & (data['impliedVolatility'].notna())]
+        return data.sort_values(by='strike').reset_index(drop=True)
+    
+    def _remove_arbitrage(self, df, max_jump=0.5):
+        """
+        Supprime les points créant des violations simples (sauts trop forts).
+        """
+        df = df.copy()
+        iv = df['impliedVolatility'].values
+        mask = (iv > 0) & (np.abs(np.gradient(iv)) < max_jump)
+        return df[mask].reset_index(drop=True)
+
+    def _build_cleaned_smile(self):
+        """
+        Construit et stocke la version nettoyée/désarbitrée du smile OTM.
+        """
+        self.cleaned_smile = self._remove_arbitrage(self.otm_iv_df)
+    
+    def _project_convex_smile(self):
+        """
+        Projette self.cleaned_smile sur l'ensemble des smiles convexes.
+        """
+        if self.cleaned_smile is None or self.cleaned_smile.empty:
+            return
+        K = self.cleaned_smile['strike'].values
+        sigma = self.cleaned_smile['impliedVolatility'].values
+        sigma_hat = project_convex(K, sigma, method='slopes')  # méthode rapide par défaut
+        self.cleaned_smile_hat = self.cleaned_smile.copy()
+        self.cleaned_smile_hat['impliedVolatility'] = sigma_hat
+
+
+    @property
+    def mean_otm_iv(self):
+        """Returns the average OTM implied volatility."""
+        iv_values = [iv for _, iv in self.otm_iv_set]
+        return float(np.mean(iv_values)) if iv_values else np.nan
 
     def get_strikes(self):
         return self.calls['strike'].tolist(), self.puts['strike'].tolist()
     
     def estimate_forward(self):
         """
-        Estimate the forward price using Put-Call Parity around ATM strikes.
-
-        Returns:
-            float: estimated forward price
+        Estimate forward price using put-call parity at the ATM strike.
         """
-        # Merge calls and puts on strike
-        merged = pd.merge(self.calls[['strike', 'lastPrice']], 
-                        self.puts[['strike', 'lastPrice']], 
-                        on='strike', 
-                        suffixes=('_call', '_put'))
-        
-        # Find strike closest to spot
+        merged = pd.merge(
+            self.calls[['strike', 'lastPrice']], 
+            self.puts[['strike', 'lastPrice']], 
+            on='strike', 
+            suffixes=('_call', '_put')
+        )
+
         merged['abs_diff'] = (merged['strike'] - self.spot_price).abs()
         atm_row = merged.loc[merged['abs_diff'].idxmin()]
 
@@ -167,31 +250,44 @@ class OptionMaturity:
         C = atm_row['lastPrice_call']
         P = atm_row['lastPrice_put']
 
-        # Put-call parity approximation
-        forward = K + (C - P)
+        return K + (C - P)
+    
+    def plot_smile_clean(self):
+        if self.cleaned_smile is None or self.cleaned_smile.empty:
+            print(f"Aucune donnée valide pour {self.expiry}")
+            return
+        plt.figure(figsize=(10, 6))
+        plt.scatter(self.otm_iv_df['strike'], self.otm_iv_df['impliedVolatility'],
+                    color='red', alpha=0.6, label='Brut')
+        plt.plot(self.cleaned_smile['strike'], self.cleaned_smile['impliedVolatility'],
+                 color='blue', label='Nettoyé')
+        if self.cleaned_smile_hat is not None:
+            plt.plot(self.cleaned_smile_hat['strike'], self.cleaned_smile_hat['impliedVolatility'],
+                     color='green', linestyle='--', label='Convexe')
+        plt.axvline(self.spot_price, color='black', linestyle='--', label='Spot')
+        plt.title(f"Vol Smile Clean - Expiry {self.expiry.date()}")
+        plt.xlabel("Strike")
+        plt.ylabel("Implied Volatility")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
 
-        return forward
-
-
-## Plotting 
-    def plot_smile(self, option_type='call', x_axis='strike'):
+    def plot_smile(self, option_type='OTM', x_axis='strike'):
         """
-        Plot the implied volatility smile.
-
-        Args:
-            option_type (str): 'call', 'put', or 'OTM' (for smoother curve)
-            x_axis (str): 'strike' or 'moneyness'
+        Plot the implied volatility smile with cleaned data.
         """
         if option_type == 'call':
             data = self.calls
         elif option_type == 'put':
             data = self.puts
         elif option_type == 'OTM':
-            otm_calls = self.calls[self.calls['strike'] > self.spot_price]
-            otm_puts = self.puts[self.puts['strike'] < self.spot_price]
-            data = pd.concat([otm_puts, otm_calls])
+            data = self.otm_iv_df
         else:
             raise ValueError("option_type must be 'call', 'put', or 'OTM'")
+
+        if data.empty:
+            print(f"No data to plot for {self.expiry}")
+            return
 
         strikes = data['strike']
         iv = data['impliedVolatility']
@@ -208,13 +304,12 @@ class OptionMaturity:
         plt.figure(figsize=(10, 6))
         plt.plot(x_values, iv, marker='o', linestyle='-', label=f'{option_type} IV')
 
-        # Spot/ATM marker
         if x_axis == 'moneyness':
             plt.axvline(1.0, color='red', linestyle='--', label='ATM (K/S₀=1)')
         else:
             plt.axvline(self.spot_price, color='red', linestyle='--', label='Spot Price')
 
-        plt.title(f'{option_type} Volatility Smile - Expiry {self.expiry}')
+        plt.title(f'{option_type} Volatility Smile - Expiry {self.expiry.date()}')
         plt.xlabel(x_label)
         plt.ylabel('Implied Volatility')
         plt.legend()
