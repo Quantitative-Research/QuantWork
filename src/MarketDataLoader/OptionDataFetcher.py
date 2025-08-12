@@ -174,7 +174,7 @@ class OptionMaturity:
         self.cleaned_smile_hat = None  
         self._clean_data()
         self._build_cleaned_smile()
-        self._project_convex_smile() 
+        self._project_convex_smile(method='slopes')  # Default method for convex projection
 
     def _clean_data(self):
         """Remove NaN/invalid implied volatility rows."""
@@ -210,7 +210,7 @@ class OptionMaturity:
         """
         self.cleaned_smile = self._remove_arbitrage(self.otm_iv_df)
     
-    def _project_convex_smile(self):
+    def _project_convex_smile(self, method):
         """
         Projette self.cleaned_smile sur l'ensemble des smiles convexes.
         """
@@ -218,7 +218,7 @@ class OptionMaturity:
             return
         K = self.cleaned_smile['strike'].values
         sigma = self.cleaned_smile['impliedVolatility'].values
-        sigma_hat = project_convex(K, sigma, method='slopes')  # méthode rapide par défaut
+        sigma_hat = project_convex(K, sigma, method=method)  # méthode rapide par défaut
         self.cleaned_smile_hat = self.cleaned_smile.copy()
         self.cleaned_smile_hat['impliedVolatility'] = sigma_hat
 
