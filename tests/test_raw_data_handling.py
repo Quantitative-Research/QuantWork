@@ -5,7 +5,7 @@ matplotlib.use("Agg")  # Non-GUI backend for CI
 from MarketDataLoader.OptionDataFetcher import OptionDataFetcher, OptionMaturity
 
 @pytest.fixture(scope="module")
-def apple_data():
+def apple_data() -> OptionDataFetcher:
     ticker = "AAPL"
     data = OptionDataFetcher(ticker)
     data.build_market()
@@ -24,8 +24,7 @@ def test_forward_curve_builds(apple_data):
 def test_smile_cleaning_runs(apple_data):
     maturities = apple_data.get_maturities()
     maturity = maturities[3]
-    options = apple_data.get_maturity_data(maturity)
-    m = OptionMaturity(expiry=maturity, calls=options.calls, puts=options.puts, spot_price=options.spot_price)
+    m = apple_data.option_maturities[maturity]
 
     # Generate cleaned smile
     _ = m.cleaned_smile_hat  # should compute without errors
@@ -36,8 +35,7 @@ def test_plotting_no_error(apple_data, tmp_path):
     """Plots should run without throwing errors."""
     maturities = apple_data.get_maturities()
     maturity = maturities[3]
-    options = apple_data.get_maturity_data(maturity)
-    m = OptionMaturity(expiry=maturity, calls=options.calls, puts=options.puts, spot_price=options.spot_price)
+    m = apple_data.option_maturities[maturity]
 
     # Save plots to files (so pytest does not try to display them)
     import matplotlib.pyplot as plt
