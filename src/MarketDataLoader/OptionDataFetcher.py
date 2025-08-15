@@ -1,33 +1,165 @@
-import yfinance as yf
-import matplotlib.pyplot as plt
+from __future__ import annotations
+
+import logging
+from typing import Dict, Optional
+
 import pandas as pd
-from scipy.interpolate import interp1d, UnivariateSpline
 import numpy as np
-from .convex_projection import project_convex
+import yfinance as yf
+from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
 from .plot_helpers import show_plot
 
+from .OptionMaturity import OptionMaturity  
+
+logger = logging.getLogger(__name__)
+
 class OptionDataFetcher:
-    def __init__(self, ticker):
+    """
+    Fetches and processes option market data for a given ticker.
+    Builds forward curve, zero-coupon curve, and convex-projected volatility surface.
+    """
+
+    ticker: str
+    spot_price: Optional[float]
+    option_maturities: Dict[pd.Timestamp, OptionMaturity]
+    vol_surface: Optional[pd.DataFrame]
+    forward_curve: Optional[pd.DataFrame]
+    zc_curve: Optional[pd.DataFrame]
+    forward_interpolator: Optional[interp1d]
+
+    def __init__(self, ticker: str) -> None:
         self.ticker = ticker
         self.option_maturities = {}
         self.spot_price = None
         self.forward_curve = None
         self.zc_curve = None
-    
-    def build_market(self):
+        self.vol_surface = None
+        self.forward_interpolator = None
+
+    # ----------------------
+    # Public API
+    # ----------------------
+    def build_market(self, fetch: bool = True) -> None:
         """
-        Fetch option data from Yahoo Finance and build the forward curve in one step.
+        Full market build: fetch data, build forward curve, vol surface, and ZC curve.
+
+        Args:
+            fetch: If True, re-fetch options from Yahoo Finance, else use existing data.
         """
-        self.fetch_options()
+        if fetch:
+            self.fetch_options()
         self.build_forward_curve()
         self.build_vol_surface()
+        self.build_ZC_curve()
 
-    def build_vol_surface(self):
+    def get_maturities(self) -> list[pd.Timestamp]:
+        """Return list of available maturities."""
+        return list(self.option_maturities.keys())  
+
+    def get_forward(self, T: pd.Timestamp) -> float:
+        """
+        Get forward price for a given maturity T.
+        Uses linear interpolation if T is not directly available.
+        """
+        if self.forward_interpolator is None:
+            raise RuntimeError("Forward curve not built. Call build_market() first.")
+        
+        days_to_expiry = (T - pd.Timestamp.today()).days
+        return float(self.forward_interpolator(days_to_expiry))
+
+    def get_volatility(self, K: float, T: pd.Timestamp) -> float:
+        """
+        Get implied volatility for a given strike K and maturity T.
+        Uses linear interpolation on the volatility surface.
+        """
+        if self.vol_surface is None:
+            raise RuntimeError("Volatility surface not built. Call build_market() first.")
+        
+        if T not in self.vol_surface.columns:
+            raise ValueError(f"No volatility data for maturity {T.date()}")
+
+        vol_series = self.vol_surface[T]
+        return float(np.interp(K, vol_series.index, vol_series.values))  
+           
+    def fetch_options(self) -> None:
+        """Fetch options chain for all expiries from Yahoo Finance."""
+        logger.info(f"Fetching option data for {self.ticker}...")
+        stock = yf.Ticker(self.ticker)
+
+        # Spot price: last close
+        self.spot_price = stock.history(period='1d')['Close'].iloc[-1]
+
+        expirations = stock.options
+        for expiry_str in expirations:
+            expiry = pd.to_datetime(expiry_str)
+            opt_chain = stock.option_chain(expiry_str)
+            maturity = OptionMaturity(
+                expiry=expiry,
+                calls=opt_chain.calls,
+                puts=opt_chain.puts,
+                spot_price=self.spot_price
+            )
+            self.option_maturities[expiry] = maturity
+
+# --- in OptionDataFetcher ---------------------------------------------
+    def build_forward_curve(self) -> None:
+        """
+        Build forward curve using ONLY the C-P=0 zero-crossing.
+        Drop any expiry where no sign change occurs across common strikes.
+        """
+        logger.info("Building forward curve (zero-crossing only)...")
+        rows = []
+        to_drop = []
+
+        # iterate over a snapshot of keys since we may delete
+        for expiry in list(self.option_maturities.keys()):
+            maturity = self.option_maturities[expiry]
+            try:
+                fwd = maturity.estimate_forward()
+                if np.isfinite(fwd):
+                    rows.append({"expiry": expiry, "forward": fwd})
+                else:
+                    logger.warning(f"No C-P sign change for {expiry.date()} — removing this maturity.")
+                    to_drop.append(expiry)
+            except Exception as e:
+                logger.warning(f"Forward failed for {expiry.date()}: {e}")
+                to_drop.append(expiry)
+
+        # remove entire slices with no sign change
+        for expiry in to_drop:
+            self.option_maturities.pop(expiry, None)
+
+        if not rows:
+            logger.error("No valid forwards from zero-crossing. Forward curve not built.")
+            self.forward_curve = None
+            self.forward_interpolator = None
+            return
+
+        df = pd.DataFrame(rows).sort_values("expiry").set_index("expiry")
+        self.forward_curve = df
+
+        # Interpolator on calendar days
+        today = pd.Timestamp.today().normalize()
+        expiry_days = (df.index - today).days.values
+        self.forward_interpolator = interp1d(
+            expiry_days, df["forward"].values, kind='linear', fill_value="extrapolate"
+        )
+
+    def build_vol_surface(self) -> Optional[pd.DataFrame]:
         """
         Build a volatility surface matrix from convex-projected smiles.
-        Rows: strikes
-        Columns: maturities
+
+        Returns:
+            DataFrame: vol surface indexed by strikes, columns = maturities
         """
+        logger.info("Building volatility surface from convex smiles...")
+
+        if not self.option_maturities:
+            logger.error("No maturities found. Run fetch_options() first.")
+            return None
+
+        # Gather all strikes across maturities
         all_strikes = sorted({
             strike
             for maturity in self.option_maturities.values()
@@ -35,389 +167,80 @@ class OptionDataFetcher:
             for strike in maturity.cleaned_smile_hat['strike'].values
         })
 
-        # Create empty DataFrame
+        if not all_strikes:
+            logger.warning("No convex smiles available for vol surface.")
+            return None
+
         vol_surface = pd.DataFrame(index=all_strikes)
 
-        # Fill with convex vols for each expiry
         for expiry, maturity in self.option_maturities.items():
             if maturity.cleaned_smile_hat is None:
                 continue
             smile = maturity.cleaned_smile_hat
-            # Map strikes to vols, NaN for missing strikes
             vol_series = pd.Series(
                 data=smile['impliedVolatility'].values,
                 index=smile['strike'].values
             )
-            vol_surface[pd.to_datetime(expiry)] = vol_series.reindex(all_strikes)
+            vol_surface[expiry] = vol_series.reindex(all_strikes)
 
         self.vol_surface = vol_surface.sort_index(axis=1)
         return self.vol_surface
-        self.build_ZC_curve()
 
-    def fetch_options(self):
-        stock = yf.Ticker(self.ticker)
-        self.spot_price = stock.history(period='1d')['Close'].iloc[-1]  # Latest close price
-        expirations = stock.options
-
-        for expiry in expirations:
-            opt_chain = stock.option_chain(expiry)
-            maturity = OptionMaturity(expiry, opt_chain.calls, opt_chain.puts, self.spot_price)
-            self.option_maturities[expiry] = maturity
-
-    def build_forward_curve(self):
+    def build_ZC_curve(self) -> None:
         """
-        Build and interpolate the forward curve. 
-        Also sets self.forward_interpolator.
-
-        Returns:
-            set: A set of (expiry, forward) tuples
+        Placeholder for building zero-coupon curve.
+        Currently does not implement any logic.
         """
-        forward_set = set()
-        expiries = []
-        forwards = []
+        logger.info("Building zero-coupon curve (not implemented).")
+        # Implement ZC curve logic here if needed
+        self.zc_curve = None    
 
-        for expiry, maturity in self.option_maturities.items():
-            try:
-                forward = maturity.estimate_forward()
-                expiry_date = pd.to_datetime(expiry)
-                forward_set.add((expiry_date, forward))
-                expiries.append(expiry_date)
-                forwards.append(forward)
-            except Exception as e:
-                print(f"Could not estimate forward for {expiry}: {e}")
-
-        if expiries and forwards:
-            # Sort by expiry
-            expiries, forwards = zip(*sorted(zip(expiries, forwards)))
-
-            # Convert dates to numerical values (days to expiry)
-            expiry_days = [(exp - pd.Timestamp.today()).days for exp in expiries]
-
-            # Build interpolator
-            self.forward_interpolator = interp1d(expiry_days, forwards, kind='linear', fill_value="extrapolate")
-    
-    def build_ZC_curve(self):
-        """
-        Build zero-coupon curve using put-call parity near the forward price.
-        
-        Sets:
-            self.zc_curve: pd.DataFrame with columns ['expiry_date', 'days_to_expiry', 'B0T', 'zero_rate']
-        """
-        results = []
-        today = pd.Timestamp.today()
-
-        for expiry, maturity in self.option_maturities.items():
-            try:
-                expiry_date = pd.to_datetime(expiry)
-                T_days = (expiry_date - today).days
-                T = T_days / 365.25
-                if T <= 0:
-                    continue
-
-                F_T = maturity.estimate_forward()
-                calls = maturity.calls
-                puts = maturity.puts
-
-                # Find strike K closest to F_T
-                strikes = calls['strike']
-                closest_idx = (strikes - F_T).abs().idxmin()
-                K = strikes.loc[closest_idx]
-
-                C_TK = calls.loc[closest_idx, 'lastPrice']
-                P_TK = puts.loc[puts['strike'] == K, 'lastPrice']
-                if P_TK.empty:
-                    continue  # no matching put
-                P_TK = P_TK.values[0]
-
-                # Use the identity
-                denominator = F_T - K
-                if denominator == 0:
-                    continue  # avoid divide by zero
-                B_0T = (C_TK - P_TK) / denominator
-
-                if B_0T <= 0 or not np.isfinite(B_0T):
-                    continue  # discard bad values
-
-                zero_rate = -np.log(B_0T) / T
-
-                results.append({
-                    'expiry_date': expiry_date,
-                    'days_to_expiry': T_days,
-                    'B0T': B_0T,
-                    'zero_rate': zero_rate
-                })
-            except Exception as e:
-                print(f"Failed for expiry {expiry}: {e}")
-                continue
-
-        self.zc_curve = pd.DataFrame(results).sort_values(by='days_to_expiry').reset_index(drop=True)
-
-    def get_forward(self, expiry):
-        """
-        Get interpolated forward price for a given expiry.
-
-        Args:
-            expiry (datetime.datetime, str, int, or float): 
-                - if datetime or str: expiry date
-                - if int/float: maturity in years
-
-        Returns:
-            float: interpolated forward price
-        """
-        if self.forward_interpolator is None:
-            raise ValueError("Forward curve has not been built. Please call build_forward_curve() first.")
-
-        # Handle depending on input type
-        if isinstance(expiry, (pd.Timestamp, str)):
-            expiry_date = pd.to_datetime(expiry)
-            expiry_day = (expiry_date - pd.Timestamp.today()).days
-        elif isinstance(expiry, (int, float)):
-            expiry_day = int(expiry * 365.25)
-  # Assuming 365.25 days in a year
-        else:
-            raise TypeError(f"Unsupported expiry type: {type(expiry)}. Must be datetime, str, int or float.")
-        
-        return float(self.forward_interpolator(expiry_day))
-
-    def get_maturities(self):
-        return list(self.option_maturities.keys())
-
-    def get_maturity_data(self, expiry):
-        return self.option_maturities.get(expiry, None)
-    
-## Plotting 
-
-    def plot_forward_curve(self):
-        """
-        Plots the forward curve based on the interpolated data.
-
-        Returns:
-            None
-        """
-        if self.forward_interpolator is None:
-            raise ValueError("Forward curve has not been built. Please call build_forward_curve() first.")
-        
-        # Get the current list of expiries and forward values
-        expiries = list(self.option_maturities.keys())
-        expiry_dates = [pd.to_datetime(exp) for exp in expiries]
-        expiry_days = [(exp - pd.Timestamp.today()).days for exp in expiry_dates]
-
-        # Get the interpolated forward values for plotting
-        forward_values = self.forward_interpolator(expiry_days)
-
-        # Plotting the forward curve
-        plt.figure(figsize=(10, 6))
-        plt.plot(expiry_days, forward_values, label="Forward Curve", color='b', marker='o')
-
-        # Plot the actual data points
-        actual_forwards = [maturity.estimate_forward() for maturity in self.option_maturities.values()]
-        plt.scatter(expiry_days, actual_forwards, color='r', label="Actual Forwards", zorder=5)
-
-        plt.xlabel('Days to Expiry')
-        plt.ylabel('Forward Price')
-        plt.title(f"Forward Curve for {self.ticker}")
-        plt.legend()
-        plt.grid(True)
-        show_plot()
-        
-        def plot_zc_curve(self):
-
-            if self.zc_curve is None or self.zc_curve.empty:
-                raise ValueError("ZC curve not built. Please call build_ZC_curve() first.")
-
-            # Convert days to expiry into years for better visualization
-            years = self.zc_curve['days_to_expiry'] / 365.25
-            zero_rates = self.zc_curve['zero_rate']
-
-            plt.figure(figsize=(10, 6))
-            plt.plot(years, zero_rates, marker='o', linestyle='-', label="Zero-Coupon Rate")
-
-            plt.xlabel('Maturity (Years)')
-            plt.ylabel('Zero Rate')
-            plt.title(f'Zero-Coupon Curve for {self.ticker}')
-            plt.grid(True)
-            plt.legend()
-            plt.show()
-
-class OptionMaturity:
-    def __init__(self, expiry, calls, puts, spot_price):
-        self.expiry = pd.to_datetime(expiry)
-        self.calls = calls.copy()
-        self.puts = puts.copy()
-        self.spot_price = spot_price
-        self.cleaned_smile = None
-        self.cleaned_smile_hat = None  
-        self._clean_data()
-        self._build_cleaned_smile()
-        self._project_convex_smile(method='slopes')  # Default method for convex projection
-
-    def _clean_data(self):
-        """Remove NaN/invalid implied volatility rows."""
-        for df in [self.calls, self.puts]:
-            df.dropna(subset=['impliedVolatility'], inplace=True)
-            df = df[df['impliedVolatility'] > 0]
-            df.reset_index(drop=True, inplace=True)
-
-    @property
-    def otm_iv_df(self):
-        """
-        Returns a cleaned DataFrame of OTM strikes and IV, sorted by strike.
-        """
-        otm_calls = self.calls[self.calls['strike'] > self.spot_price]
-        otm_puts = self.puts[self.puts['strike'] < self.spot_price]
-
-        data = pd.concat([otm_calls, otm_puts])[['strike', 'impliedVolatility']]
-        data = data[(data['impliedVolatility'] > 0) & (data['impliedVolatility'].notna())]
-        return data.sort_values(by='strike').reset_index(drop=True)
-    
-    def _remove_arbitrage(self, df, max_jump=0.5):
-        """
-        Supprime les points créant des violations simples (sauts trop forts).
-        """
-        df = df.copy()
-        iv = df['impliedVolatility'].values
-        mask = (iv > 0) & (np.abs(np.gradient(iv)) < max_jump)
-        return df[mask].reset_index(drop=True)
-
-    def _build_cleaned_smile(self):
-        """
-        Construit et stocke la version nettoyée/désarbitrée du smile OTM.
-        """
-        self.cleaned_smile = self._remove_arbitrage(self.otm_iv_df)
-    
-    def _project_convex_smile(self, method):
-        """
-        Projette self.cleaned_smile sur l'ensemble des smiles convexes.
-        """
-        if self.cleaned_smile is None or self.cleaned_smile.empty:
+    # ----------------------
+    # Plotting
+    # ----------------------
+    def plot_vol_surface(self) -> None:
+        """3D surface plot of volatility surface."""
+        if self.vol_surface is None:
+            logger.error("Vol surface not built.")
             return
-        K = self.cleaned_smile['strike'].values
-        sigma = self.cleaned_smile['impliedVolatility'].values
-        sigma_hat = project_convex(K, sigma, method=method)  # méthode rapide par défaut
-        self.cleaned_smile_hat = self.cleaned_smile.copy()
-        self.cleaned_smile_hat['impliedVolatility'] = sigma_hat
 
+        from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+        fig = plt.figure(figsize=(12, 8))
+        ax = fig.add_subplot(111, projection='3d')
 
-    @property
-    def mean_otm_iv(self):
-        """Returns the average OTM implied volatility."""
-        iv_values = [iv for _, iv in self.otm_iv_set]
-        return float(np.mean(iv_values)) if iv_values else np.nan
-
-    def get_strikes(self):
-        return self.calls['strike'].tolist(), self.puts['strike'].tolist()
-    
-    def estimate_forward(self):
-        """
-        Estimate the forward price by interpolating the strike where C - P = 0 (put-call parity).
-        
-        Returns:
-            float: estimated forward price
-        """
-        # Merge call and put prices on strike
-        merged = pd.merge(
-            self.calls[['strike', 'lastPrice']],
-            self.puts[['strike', 'lastPrice']],
-            on='strike',
-            suffixes=('_call', '_put')
+        X, Y = np.meshgrid(
+            [exp.date() for exp in self.vol_surface.columns],
+            self.vol_surface.index
         )
+        Z = self.vol_surface.values
 
-        # Compute call - put differences
-        merged['cp_diff'] = merged['lastPrice_call'] - merged['lastPrice_put']
+        ax.plot_surface(X, Y, Z, cmap="viridis")
+        ax.set_xlabel("Maturity")
+        ax.set_ylabel("Strike")
+        ax.set_zlabel("Implied Volatility")
+        ax.set_title(f"Volatility Surface for {self.ticker}")
 
-        # Sort by strike to prepare for interpolation
-        merged = merged.sort_values(by='strike').reset_index(drop=True)
-
-        # Find where cp_diff crosses zero (i.e. changes sign)
-        for i in range(1, len(merged)):
-            prev_diff = merged.loc[i - 1, 'cp_diff']
-            curr_diff = merged.loc[i, 'cp_diff']
-
-            if prev_diff * curr_diff <= 0:  # Sign change (crossed zero)
-                K1 = merged.loc[i - 1, 'strike']
-                K2 = merged.loc[i, 'strike']
-                D1 = prev_diff
-                D2 = curr_diff
-
-                # Linear interpolation to find K such that C - P = 0
-                if D2 != D1:  # avoid divide by zero
-                    K_interp = K1 - D1 * (K2 - K1) / (D2 - D1)
-                else:
-                    K_interp = K1  # arbitrary; means prices are identical
-
-                return float(K_interp)
-
-        # Fallback: no crossing found, use strike with min |C - P|
-        print("Warning: No zero crossing found in C - P; using closest estimate.")
-        merged['abs_cp_diff'] = merged['cp_diff'].abs()
-        best_row = merged.loc[merged['abs_cp_diff'].idxmin()]
-        return float(best_row['strike'] + best_row['cp_diff'])
-
-    def plot_smile_clean(self):
-        if self.cleaned_smile is None or self.cleaned_smile.empty:
-            print(f"Aucune donnée valide pour {self.expiry}")
-            return
-        plt.figure(figsize=(10, 6))
-        plt.scatter(self.otm_iv_df['strike'], self.otm_iv_df['impliedVolatility'],
-                    color='red', alpha=0.6, label='Brut')
-        plt.plot(self.cleaned_smile['strike'], self.cleaned_smile['impliedVolatility'],
-                 color='blue', label='Nettoyé')
-        if self.cleaned_smile_hat is not None:
-            plt.plot(self.cleaned_smile_hat['strike'], self.cleaned_smile_hat['impliedVolatility'],
-                     color='green', linestyle='--', label='Convexe')
-        plt.axvline(self.spot_price, color='black', linestyle='--', label='Spot')
-        plt.title(f"Vol Smile Clean - Expiry {self.expiry.date()}")
-        plt.xlabel("Strike")
-        plt.ylabel("Implied Volatility")
-        plt.legend()
-        plt.grid(True)
         show_plot()
 
-## Plotting 
-    def plot_smile(self, option_type='call', x_axis='strike'):
-        """
-        Plot the implied volatility smile.
-
-        Args:
-            option_type (str): 'call', 'put', or 'OTM' (for smoother curve)
-            x_axis (str): 'strike' or 'moneyness'
-        """
-        if option_type == 'call':
-            data = self.calls
-        elif option_type == 'put':
-            data = self.puts
-        elif option_type == 'OTM':
-            data = self.otm_iv_df
-        else:
-            raise ValueError("option_type must be 'call', 'put', or 'OTM'")
-
-        if data.empty:
-            print(f"No data to plot for {self.expiry}")
+    def plot_forward_curve(self) -> None:
+        """Plot the forward curve."""
+        if self.forward_curve is None:
+            logger.error("Forward curve not built.")
             return
 
-        strikes = data['strike']
-        iv = data['impliedVolatility']
-
-        if x_axis == 'strike':
-            x_values = strikes
-            x_label = 'Strike Price'
-        elif x_axis == 'moneyness':
-            x_values = strikes / self.spot_price
-            x_label = 'Moneyness (K/S₀)'
-        else:
-            raise ValueError("x_axis must be 'strike' or 'moneyness'")
-
         plt.figure(figsize=(10, 6))
-        plt.plot(x_values, iv, marker='o', linestyle='-', label=f'{option_type} IV')
-
-        if x_axis == 'moneyness':
-            plt.axvline(1.0, color='red', linestyle='--', label='ATM (K/S₀=1)')
-        else:
-            plt.axvline(self.spot_price, color='red', linestyle='--', label='Spot Price')
-
-        plt.title(f'{option_type} Volatility Smile - Expiry {self.expiry.date()}')
-        plt.xlabel(x_label)
-        plt.ylabel('Implied Volatility')
-        plt.legend()
-        plt.grid(True)
+        plt.plot(self.forward_curve.index, self.forward_curve['forward'], marker='o')
+        plt.title(f"Forward Curve for {self.ticker}")
+        plt.xlabel("Expiry Date")
+        plt.ylabel("Forward Price")
+        plt.grid()
         show_plot()
+
+    def plot_ZC_curve(self) -> None:
+        """Placeholder for ZC curve plotting."""
+        if self.zc_curve is None:
+            logger.error("Zero-coupon curve not built.")
+            return
+
+        # Implement ZC curve plotting logic here
+        pass

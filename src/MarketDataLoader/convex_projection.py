@@ -176,5 +176,38 @@ def project_convex(K, sigma, method: str = "slopes", weights: Optional[np.ndarra
     else:
         raise ValueError("method must be 'slopes' or 'qp'.")
 
+def convex_monotone_projection(K, y, monotone: str):
+    """
+    L2 projection of a price curve y(K) onto the cone of convex + monotone functions.
+    monotone: 'nonincreasing' for calls, 'nondecreasing' for puts
+    """
+    K = np.asarray(K, float)
+    y = np.asarray(y, float)
+    n = y.size
+    if n < 3:
+        return y.copy()
 
+    dK = np.diff(K)
+    slopes = np.diff(y) / dK           # length n-1
+
+    # convexity = nondecreasing slopes
+    ir = IsotonicRegression(increasing=True, out_of_bounds="clip")
+    slopes_hat = ir.fit_transform(np.arange(n-1), slopes, sample_weight=dK)
+
+    # enforce monotonicity sign on slopes
+    if monotone == "nonincreasing":
+        slopes_hat = np.minimum(slopes_hat, 0.0)
+    elif monotone == "nondecreasing":
+        slopes_hat = np.maximum(slopes_hat, 0.0)
+    else:
+        raise ValueError("monotone must be 'nonincreasing' or 'nondecreasing'")
+
+    # reconstruct y_hat from slopes_hat, with optimal vertical shift (least squares)
+    y_hat = np.empty_like(y)
+    y_hat[0] = y[0]
+    for i in range(n-1):
+        y_hat[i+1] = y_hat[i] + slopes_hat[i] * dK[i]
+
+    alpha = (y - y_hat).mean()   # least-squares optimal vertical shift
+    return y_hat + alpha
 
