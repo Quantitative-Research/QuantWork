@@ -29,7 +29,10 @@ class BlackModel(PricingModel):
         else:
             raise NotImplementedError(f"Can not price {OptionType} with current method")
 
-    def PriceVanillaOption(self, vanilla = VanillaOption):
+    def PriceVanillaOption(self, vanilla : VanillaOption):
         K, T, option_type, quantity = vanilla.K, vanilla.T, vanilla.option_type, vanilla.quantity
         return self._PriceVanillaOption(K, T, option_type) * quantity
 
+    def PriceAndGreeksVanillaOption(self, vanilla : VanillaOption):
+        K, T, option_type, quantity = vanilla.K, vanilla.T, vanilla.option_type, vanilla.quantity
+        pass

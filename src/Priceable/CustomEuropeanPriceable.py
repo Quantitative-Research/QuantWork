@@ -12,3 +12,6 @@ class CustomEuropeanPriceable(Priceable):
         for vanilla_option in self.option.list_puts:
             total_price += self.model.PriceVanillaOption(vanilla_option)
         return total_price
+    
+    def price_and_greeks(self):
+        pass

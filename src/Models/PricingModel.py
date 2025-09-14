@@ -20,5 +20,9 @@ class PricingModel(ABC):
         pass
     
     @abstractmethod
-    def PriceVanillaOption(self, vanilla = VanillaOption):
+    def PriceVanillaOption(self, vanilla : VanillaOption):
+        pass
+    
+    @abstractmethod
+    def PriceAndGreeksVanillaOption(self, vanilla : VanillaOption):
         pass

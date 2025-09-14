@@ -1,5 +1,6 @@
 from Models.PricingModel import PricingModel
 from Products.Option import Option
+from PricingResult import PricingResult
 from abc import ABC,abstractmethod
 
 class Priceable(ABC):
@@ -14,6 +15,10 @@ class Priceable(ABC):
     @abstractmethod
     def price(self)-> float:
         """ Handles the pricing"""
+        pass
+
+    @abstractmethod
+    def price_and_greeks(self)-> PricingResult:
         pass
 
     @property
