@@ -91,4 +91,16 @@ class BlackScholes:
             return -K * T * np.exp(-self.r * T) * norm.cdf(-d2) 
         else:
             raise ValueError("Invalid option type")
-        
+
+    def vanna(self, K, T, sigma, option=OptionType.CALL) -> float:
+        d1 = self._d1(K, T, sigma)
+        d2 = self._d2(K, T, sigma)
+
+        return -np.exp(-self.q * T) * norm.pdf(d1) * d2 / sigma
+
+    def volga(self, K, T, sigma) -> float:
+        d1 = self._d1(K, T, sigma)
+        d2 = self._d2(K, T, sigma)
+
+        vega = self.vega(K, T, sigma)
+        return vega * d1 * d2 / sigma

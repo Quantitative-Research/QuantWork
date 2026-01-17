@@ -43,8 +43,8 @@ class BlackModel(PricingModel):
                 vega=DiscountFactor * Black76(F=F, T=T).vega(K=K, sigma=vol),
                 theta=DiscountFactor * Black76(F=F, T=T).theta(K=K, sigma=vol, option=OptionType.CALL),
                 gamma=DiscountFactor * Black76(F=F, T=T).gamma(K=K, sigma=vol),
-                vanna=0.0,
-                volga=0.0
+                vanna=DiscountFactor * Black76(F=F, T=T).vanna(K=K, sigma=vol),
+                volga=DiscountFactor * Black76(F=F, T=T).volga(K=K, sigma=vol)
             )
         elif OptionType == OptionType.PUT:
             return PricingResult(
@@ -53,8 +53,8 @@ class BlackModel(PricingModel):
                 vega=DiscountFactor * Black76(F=F, T=T).vega(K=K, sigma=vol),
                 theta=-DiscountFactor * Black76(F=F, T=T).theta(K=K, sigma=vol, option=OptionType.PUT),  
                 gamma=DiscountFactor * Black76(F=F, T=T).gamma(K=K, sigma=vol),
-                vanna=0.0,
-                volga=0.0
+                vanna=DiscountFactor * Black76(F=F, T=T).vanna(K=K, sigma=vol),
+                volga=DiscountFactor * Black76(F=F, T=T).volga(K=K, sigma=vol)
             )
         else:
             raise NotImplementedError(f"Can not price {OptionType} with current method")

@@ -50,3 +50,11 @@ class Black76:
     def rho(self, K : float, sigma : float, option : OptionType = OptionType.CALL) -> float:
         raw = self.black.rho(K, self.T, sigma, option)
         return math.exp(-self.discount_rate * self.T) * raw
+    
+    def vanna(self, K : float, sigma : float, option : OptionType = OptionType.CALL) -> float:
+        raw = self.black.vanna(K, self.T, sigma)
+        return math.exp(-self.discount_rate * self.T) * raw
+
+    def volga(self, K : float, sigma : float) -> float:
+        raw = self.black.volga(K, self.T, sigma)
+        return math.exp(-self.discount_rate * self.T) * raw
