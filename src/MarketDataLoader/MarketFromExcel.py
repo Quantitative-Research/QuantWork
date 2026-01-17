@@ -50,7 +50,7 @@ class Market:
 
         self._forward_curve = forwards
         self._forward_curve_interpolated = interp1d(
-            self._maturities, forwards, kind="linear", fill_value="extrapolate"
+            self._maturities, forwards, kind="linear", fill_value="extrapolate" #TODO check fill_value correctness
         )
 
         # Extract vol surface

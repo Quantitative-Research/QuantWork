@@ -4,7 +4,7 @@ import datetime
 from Priceable.CustomEuropeanPriceable import CustomEuropeanPriceable
 from Models.BlackModel import BlackModel
 from Products.Option import VanillaOption
-from Products.EuropeanCustom import EuropeanCustomOption
+from Products.EuropeanCustomOption import EuropeanCustomOption
 from Products.Enums import OptionType
 
 def test_VanillaOptionPricing():
