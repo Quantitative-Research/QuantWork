@@ -40,6 +40,25 @@ def test_price_butterfly():
     price = priceable.price()
     assert price>0
 
+def test_consistency_butterfly():
+    xl_file = data_path('spx_1_nov_24.xlsx')
+    pricingdate = datetime.datetime(2024, 11,1)
+    market = Market(xl_file, pricingdate)
+    black_model = BlackModel(market)
+    butterfly_option = Butterfly(market.spot, T = 1)
+    priceable = CustomEuropeanPriceable(black_model, butterfly_option)
+    butterfly_price = priceable.price()
+    epsilon = 0.05
+    deltaK = market.spot * epsilon
+    call_low = VanillaOption(K = market.spot - deltaK, T =1, option_type= OptionType.CALL)
+    call_mid = VanillaOption(K = market.spot, T =1, option_type= OptionType.CALL)
+    call_high = VanillaOption(K = market.spot + deltaK, T =1, option_type= OptionType.CALL)
+    call_low_price = black_model.PriceVanillaOption(call_low)
+    call_mid_price = black_model.PriceVanillaOption(call_mid)
+    call_high_price = black_model.PriceVanillaOption(call_high)
+    finite_diff_butterfly_price = (call_high_price - 2 * call_mid_price + call_low_price) / (deltaK **2)
+    assert abs(butterfly_price - finite_diff_butterfly_price) < 1e-4
+
 def test_price_digital():
     xl_file = data_path('spx_1_nov_24.xlsx')
     pricingdate = datetime.datetime(2024, 11,1)
@@ -54,3 +73,35 @@ def test_price_digital():
     assert price_call>0
     assert price_put>0
     assert (price_call + price_put -1) < 1e-10
+
+def test_price_and_greeks_straddle():
+    xl_file = data_path('spx_1_nov_24.xlsx')
+    pricingdate = datetime.datetime(2024, 11,1)
+    market = Market(xl_file, pricingdate)
+    black_model = BlackModel(market)
+    straddle_option = Straddle(market.spot, T = 1)
+    priceable = CustomEuropeanPriceable(black_model, straddle_option)
+    result = priceable.price_and_greeks()
+    price = priceable.price()
+    assert result.price>0
+    assert result.price - price < 1e-10
+    assert result.delta is not None
+    assert result.gamma is not None
+    assert result.vega is not None
+    assert result.theta is not None
+
+def test_price_and_greeks_butterfly():
+    xl_file = data_path('spx_1_nov_24.xlsx')
+    pricingdate = datetime.datetime(2024, 11,1)
+    market = Market(xl_file, pricingdate)
+    black_model = BlackModel(market)
+    butterfly_option = Butterfly(market.spot, T = 1)
+    priceable = CustomEuropeanPriceable(black_model, butterfly_option)
+    result = priceable.price_and_greeks()
+    price = priceable.price()
+    assert result.price>0
+    assert result.price - price < 1e-10
+    assert result.delta is not None
+    assert result.gamma is not None
+    assert result.vega is not None
+    assert result.theta is not None

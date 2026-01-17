@@ -36,7 +36,7 @@ class BlackScholes:
         self._q = value
 
     def _d1(self, K, T, sigma):
-        return (np.log(self.S / K) + (self.r - self.q + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+        return (np.log(self.S / K) + (self.r - self.q + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T)) 
 
     def _d2(self, K, T, sigma):
         return self._d1(K, T, sigma) - sigma * np.sqrt(T)
@@ -88,7 +88,7 @@ class BlackScholes:
         if option == OptionType.CALL:
             return K * T * np.exp(-self.r * T) * norm.cdf(d2)
         elif option == OptionType.PUT:
-            return -K * T * np.exp(-self.r * T) * norm.cdf(-d2)
+            return -K * T * np.exp(-self.r * T) * norm.cdf(-d2) 
         else:
             raise ValueError("Invalid option type")
         
