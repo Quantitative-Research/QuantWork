@@ -36,3 +36,15 @@ class Digital(EuropeanCustomOption):
             }
         }
         super().__init__(booked)
+
+class RiskReversal(EuropeanCustomOption):
+    def __init__(self, K1, K2, T, quantity=1):
+        booked = {
+            OptionType.CALL: {
+                (K2, T): quantity
+            },
+            OptionType.PUT: {
+                (K1, T): -quantity
+            }
+        }
+        super().__init__(booked)
