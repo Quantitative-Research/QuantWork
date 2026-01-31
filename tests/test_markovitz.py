@@ -33,3 +33,11 @@ def test_optimal_allocation_single_asset():
     weights = OptimalAllocation(tickers, method="Markovitz", allow_short=False)
     assert len(weights) == 1
     assert weights.iloc[0] == 1.0
+
+def test_two_assets_allocation():
+    tickers = ["AAPL", "MSFT"]
+    weights = OptimalAllocation(tickers, method="Markovitz", allow_short=False)
+    assert len(weights) == 2
+    assert pytest.approx(weights.sum(), abs=1e-6) == 1.0
+    assert all(0 <= w <= 1 for w in weights)
+    
