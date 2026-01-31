@@ -69,6 +69,13 @@ class TickerResolver:
         "vinci": "DG.PA",
         "saint gobain": "SGO.PA",
         "essilorluxottica": "EL.PA",
+        "vusion": "VIE.PA",
+        "banco de sabadell": "SAB.MC",
+        "sabadell": "SAB.MC",
+        "euronext": "ENX.PA",
+        "intesa sanpaolo": "ISP.MI",
+        
+
 
         # --- US Large Caps ---
         "apple": "AAPL",
