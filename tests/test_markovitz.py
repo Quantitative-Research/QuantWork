@@ -27,3 +27,9 @@ def test_optimal_allocation_french_stocks_with_target_return():
     assert len(weights) == len(tickers)
     assert pytest.approx(weights.sum(), abs=1e-6) == 1.0
     assert all(0 <= w <= 1 for w in weights)
+
+def test_optimal_allocation_single_asset():
+    tickers = ["AAPL"]
+    weights = OptimalAllocation(tickers, method="Markovitz", allow_short=False)
+    assert len(weights) == 1
+    assert weights.iloc[0] == 1.0

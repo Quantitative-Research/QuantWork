@@ -20,7 +20,7 @@ def daily_log_returns(price_df: pd.DataFrame) -> pd.DataFrame:
     Compute daily log returns for a DataFrame of prices.
     price_df: rows = dates, columns = tickers
     """
-    return np.log(price_df / price_df.shift(1)).dropna(how="all")
+    return np.log(price_df / price_df.shift(1)).dropna(how="any")
 
 
 def covariance_matrix(returns_df: pd.DataFrame) -> pd.DataFrame:
