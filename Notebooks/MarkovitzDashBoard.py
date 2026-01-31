@@ -116,12 +116,12 @@ app.layout = html.Div(
 def compute_allocation(n_clicks, tickers_input, allow_short, target_return):
 
     if not tickers_input:
-        return {}, None, "Please enter at least two assets."
+        return {}, None, "Please enter at least one asset."
 
     raw_assets = [t.strip() for t in tickers_input.split(",") if t.strip()]
 
-    if len(raw_assets) < 2:
-        return {}, None, "Please enter at least two assets."
+    if len(raw_assets) < 1:
+        return {}, None, "Please enter at least one asset."
 
     try:
         # Resolve tickers
