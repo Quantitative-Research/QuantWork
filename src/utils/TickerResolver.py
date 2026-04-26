@@ -74,9 +74,8 @@ class TickerResolver:
         "sabadell": "SAB.MC",
         "euronext": "ENX.PA",
         "intesa sanpaolo": "ISP.MI",
-        
-
-
+        "adyen": "ADYEY",
+    
         # --- US Large Caps ---
         "apple": "AAPL",
         "microsoft": "MSFT",
@@ -98,7 +97,7 @@ class TickerResolver:
         "royal dutch shell": "SHEL",
         "shell plc": "SHEL",
 
-
+        "bitcoin": "BTC-EUR",
     }
 
     # ---------------------------------------------------------------------
