@@ -12,17 +12,33 @@ def OptimalAllocation(
     measure: str = "Close",
     method: str = "Markovitz",
     allow_short: bool = False,
-    target_return: float | None = None
+    target_return: float | None = None,
+    period_days: int = 730
 ) -> pd.Series:
     """
-    High-level wrapper: fetch 2 years of price data, compute returns,
+    High-level wrapper: fetch historical price data, compute returns,
     and return optimal portfolio weights.
+    
+    Parameters
+    ----------
+    tickers : list[str]
+        List of tickers to include in the portfolio
+    measure : str
+        Price measure to use ('Close', 'High', or 'Low')
+    method : str
+        Optimization method ('Markovitz')
+    allow_short : bool
+        Whether to allow short positions
+    target_return : float or None
+        Target annual return (None for minimum variance)
+    period_days : int
+        Number of days of historical data to use for calibration (default 730 ≈ 2 years)
     """
 
     # --------------------------------------------------
     # Load prices
     # --------------------------------------------------
-    prices = load_prices(tickers, period_days=730)
+    prices = load_prices(tickers, period_days=period_days)
 
     if prices.keys() == []:
         raise ValueError("No price data returned.")
