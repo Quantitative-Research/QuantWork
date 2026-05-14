@@ -24,6 +24,16 @@ import pandas as pd
 import numpy as np
 import datetime
 
+# Example: List of tickers and company names
+REFERENCE_OPTIONS = [
+    {"label": "S&P 500 (^GSPC)", "value": "^GSPC"},
+    {"label": "CAC 40 (^FCHI)", "value": "^FCHI"},
+    {"label": "Apple (AAPL)", "value": "AAPL"},
+    {"label": "Microsoft (MSFT)", "value": "MSFT"},
+    {"label": "Google (GOOGL)", "value": "GOOGL"},
+    # Add more as needed
+]
+
 # --------------------------------------------------
 # App setup
 # --------------------------------------------------
@@ -97,16 +107,18 @@ app.layout = html.Div(
                             ),
                             html.Div(id="window-display", style={"marginTop": "10px", "fontSize": "12px", "color": "#666"}),
                         ]),
-                        html.Div([
-                            html.Label("Reference ticker for beta calculation", style={"fontWeight": "bold"}),
-                            dcc.Input(
-                                id="reference-ticker",
-                                type="text",
-                                value="^GSPC",
-                                placeholder="e.g., ^GSPC (S&P 500), ^FCHI (CAC40)",
-                                style={"width": "100%", "padding": "8px", "fontSize": "14px"}
-                            ),
-                        ]),
+                            html.Div([
+                                html.Label("Reference ticker for beta calculation", style={"fontWeight": "bold"}),
+                                dcc.Dropdown(
+                                    id="reference-ticker",
+                                    options=REFERENCE_OPTIONS,
+                                    value="^GSPC",
+                                    placeholder="Select or type a ticker or company name",
+                                    searchable=True,
+                                    clearable=True,
+                                    style={"width": "100%"}
+                                ),
+                            ]),
                     ]
                 ),
 
