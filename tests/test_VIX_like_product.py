@@ -35,10 +35,11 @@ def priceable_factory(black_model):
 def test_price_vix_like(market, priceable_factory):
     forward_level = market.get_forward(30/365)
     option = VixLike(T=30/365, forward_level=forward_level, K_min=0.8, K_max=1.2, number_of_strikes=20, quantity=1)
-    option_bis = VixLike(T=30/365, forward_level=forward_level, K_min=0.5, K_max=1.5, number_of_strikes=1000, quantity=1) # type: ignore
+    option_finer_grid = VixLike(T=30/365, forward_level=forward_level, K_min=0.5, K_max=1.5, number_of_strikes=1000, quantity=1) # type: ignore
     price = priceable_factory(option).price()
-    price_bis = priceable_factory(option_bis).price() 
+    price_finer_grid = priceable_factory(option_finer_grid).price()
     assert price > 0, "VIX-like product price should be positive"
     VIX_value = np.sqrt(price) * 100
-    VIX_value_bis = np.sqrt(price_bis) * 100
+    VIX_value_finer_grid = np.sqrt(price_finer_grid) * 100
     assert VIX_value < 100, "VIX-like product implied volatility should be reasonable"
+    assert abs(VIX_value - VIX_value_finer_grid) < 1e-1, "VIX-like product price should be stable across different strike grids"

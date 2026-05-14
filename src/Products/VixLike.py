@@ -11,18 +11,18 @@ class VixLike(EuropeanCustomOption):
         n_put = number_of_strikes - n_call
 
         # Create a strike grid around the forward level for OTM options
-        put_grid = [forward_level * (K_min + i * (1 - K_min) / (n_put - 1)) for i in range(n_put)]
+        put_grid = [forward_level * (K_min + i * (1 - K_min) / (n_put - 1)) for i in range(n_put - 1)]
         call_grid = [forward_level * (K_max - i * (K_max - 1) / (n_call - 1)) for i in range(n_call)]
 
-        interstrike = call_grid[0] - put_grid[-1]
+        interstrike = min(call_grid) - max(put_grid)
         strike_grid = put_grid + call_grid
 
         booked = {
             OptionType.CALL: {
-                (K, T): 2 * quantity * interstrike/ (K * K * T ) for K in call_grid
+                (K, T): 2 * quantity * interstrike / (K * K * T) for K in call_grid
             },
             OptionType.PUT: {
-                (K, T): 2 * quantity * interstrike / (K * K * T ) for K in put_grid
+                (K, T): 2 * quantity * interstrike / (K * K * T) for K in put_grid
             }
         }
 
