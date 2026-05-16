@@ -27,10 +27,11 @@ import datetime
 # Example: List of tickers and company names
 REFERENCE_OPTIONS = [
     {"label": "S&P 500 (^GSPC)", "value": "^GSPC"},
+    {"label": "Euro Stoxx 50 (^STOXX50E)", "value": "^STOXX50E"},
+    {"label": "MSCI World (^MSCI)", "value": "^MSCI"},
     {"label": "CAC 40 (^FCHI)", "value": "^FCHI"},
-    {"label": "Apple (AAPL)", "value": "AAPL"},
-    {"label": "Microsoft (MSFT)", "value": "MSFT"},
-    {"label": "Google (GOOGL)", "value": "GOOGL"},
+    {"label": "BTC-EUR (BTCEUR)", "value": "BTCEUR"},
+    {"label": "ETH-EUR (ETHEUR)", "value": "ETHEUR"},
     # Add more as needed
 ]
 
