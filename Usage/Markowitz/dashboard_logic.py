@@ -1,7 +1,7 @@
-from src.Models.Allocation import OptimalAllocation
-from src.Models import PortfolioOptimizer as po
-from src.MarketDataLoader.HistoricalPricesLoader import load_prices
-from src.utils.TickerResolver import resolve_ticker
+from Models.Allocation import OptimalAllocation
+from Models import PortfolioOptimizer as po
+from MarketDataLoader.HistoricalPricesLoader import load_prices
+from utils.TickerResolver import resolve_ticker
 import pandas as pd
 
 def compute_portfolio_metrics(resolved_tickers, weights, hist_window, ref_ticker):

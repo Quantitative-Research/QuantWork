@@ -1,9 +1,9 @@
 from usage.Markowitz.dashboard_app import create_dash_app
 from usage.Markowitz.dashboard_logic import compute_portfolio_metrics
-from src.Models.Allocation import OptimalAllocation
-from src.utils.TickerResolver import resolve_ticker
-from src.MarketDataLoader.HistoricalPricesLoader import load_prices
-from src.Models import PortfolioOptimizer as po
+from Models.Allocation import OptimalAllocation
+from utils.TickerResolver import resolve_ticker
+from MarketDataLoader.HistoricalPricesLoader import load_prices
+from Models import PortfolioOptimizer as po
 from dash import Input, Output, State, html, dcc
 import plotly.express as px
 import plotly.graph_objects as go
