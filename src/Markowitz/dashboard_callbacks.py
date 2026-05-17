@@ -1,5 +1,5 @@
-from usage.Markowitz.dashboard_app import create_dash_app
-from usage.Markowitz.dashboard_logic import compute_portfolio_metrics
+from Markowitz.dashboard_app import create_dash_app
+from Markowitz.dashboard_logic import compute_portfolio_metrics
 from Models.Allocation import OptimalAllocation
 from utils.TickerResolver import resolve_ticker
 from MarketDataLoader.HistoricalPricesLoader import load_prices

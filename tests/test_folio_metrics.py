@@ -1,4 +1,4 @@
-from usage.Markowitz.dashboard_logic import compute_portfolio_metrics
+from Markowitz.dashboard_logic import compute_portfolio_metrics
 import pandas as pd
 
 def test_compute_portfolio_metrics_US():
