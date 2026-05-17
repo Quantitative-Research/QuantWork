@@ -14,6 +14,9 @@ class Priceable(ABC):
         self._model = model
         self._option = option
     
+    def __repr__(self):
+        pass
+    
     @abstractmethod
     def price(self)-> float:
         """ Handles the pricing"""

@@ -11,6 +11,9 @@ class BlackScholes:
         self._r = r
         self._q = q
 
+    def __repr__(self) -> str:
+        return f"BlackScholes Model (S={self.S}, r={self.r}, q={self.q})"
+    
     @property
     def S(self):
         return self._S
