@@ -3,8 +3,8 @@
 from typing import List
 import pandas as pd
 
-from src.MarketDataLoader.HistoricalPricesLoader import load_prices
-from src.Models import PortfolioOptimizer as po
+from MarketDataLoader.HistoricalPricesLoader import load_prices
+from Models import PortfolioOptimizer as po
 
 
 def OptimalAllocation(
