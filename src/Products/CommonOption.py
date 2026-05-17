@@ -1,5 +1,5 @@
-from Products.Enums import OptionType
-from Products.EuropeanCustomOption import EuropeanCustomOption
+from src.Products.Enums import OptionType
+from src.Products.EuropeanCustomOption import EuropeanCustomOption
 
 class Straddle(EuropeanCustomOption):
     def __init__(self, K, T, quantity=1):

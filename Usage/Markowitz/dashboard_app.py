@@ -1,7 +1,8 @@
 import dash
 from dash import dcc, html
+from typing import List, Dict
 
-REFERENCE_OPTIONS = [
+REFERENCE_OPTIONS: List[Dict[str, str]] = [
     {"label": "S&P 500 (^GSPC)", "value": "^GSPC"},
     {"label": "Euro Stoxx 50 (^STOXX50E)", "value": "^STOXX50E"},
     {"label": "MSCI World (^MSCI)", "value": "^MSCI"},
@@ -75,7 +76,7 @@ def create_dash_app():
                                 html.Label("Reference ticker for beta calculation", style={"fontWeight": "bold"}),
                                 dcc.Dropdown(
                                     id="reference-ticker",
-                                    options=REFERENCE_OPTIONS,
+                                    options=REFERENCE_OPTIONS,  # type: ignore
                                     value="^GSPC",
                                     placeholder="Select or type a ticker or company name",
                                     searchable=True,
@@ -97,6 +98,16 @@ def create_dash_app():
                             tooltip={"placement": "bottom"}
                         ),
                     ]),
+                    html.Div([
+                        html.Label("Custom weights (optional, comma-separated, in % or decimal)", style={"fontWeight": "bold"}),
+                        dcc.Input(
+                            id="custom-weights",
+                            type="text",
+                            placeholder="e.g., 25,25,25,25 or 0.25,0.25,0.25,0.25",
+                            style={"width": "100%", "padding": "8px", "fontSize": "14px", "marginTop": "5px"}
+                        ),
+                        html.P("Leave empty to use Markowitz optimization", style={"fontSize": "12px", "color": "#666", "marginTop": "5px"}),
+                    ], style={"marginTop": "15px"}),
                     html.Br(),
                     html.Button(
                         "Compute allocation",

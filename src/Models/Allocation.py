@@ -3,14 +3,14 @@
 from typing import List
 import pandas as pd
 
-from MarketDataLoader.HistoricalPricesLoader import load_prices
-from Models import PortfolioOptimizer as po
+from src.MarketDataLoader.HistoricalPricesLoader import load_prices
+from src.Models import PortfolioOptimizer as po
 
 
 def OptimalAllocation(
     tickers: List[str],
     measure: str = "Close",
-    method: str = "Markovitz",
+    method: str = "Markowitz",
     allow_short: bool = False,
     target_return: float | None = None,
     period_days: int = 730
@@ -26,7 +26,7 @@ def OptimalAllocation(
     measure : str
         Price measure to use ('Close', 'High', or 'Low')
     method : str
-        Optimization method ('Markovitz')
+        Optimization method ('Markowitz')
     allow_short : bool
         Whether to allow short positions
     target_return : float or None
@@ -77,7 +77,7 @@ def OptimalAllocation(
     # --------------------------------------------------
     method = method.lower()
 
-    if method == "markovitz":
+    if method == "markowitz":
         weights = po.markowitz_weights(
             cov=cov,
             exp_returns=exp_ret if target_return is not None else None,

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from .Enums import OptionType
-from Models.ModelType import ModelType
+from src.Models.ModelType import ModelType
 # === Abstract Option class ===
 
 class AbstractOption(ABC):
