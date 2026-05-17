@@ -1,9 +1,10 @@
 from Products.Enums import OptionType
 from Products.Option import VanillaOption
+
 class EuropeanCustomOption:
     def __init__(self, dict_booked_option: dict):
-        calls = dict_booked_option.get(OptionType.CALL, {})
-        puts = dict_booked_option.get(OptionType.PUT, {})
+        calls = dict_booked_option.get(OptionType.CALL.value, {})
+        puts = dict_booked_option.get(OptionType.PUT.value, {})
 
         self.list_calls = [
             VanillaOption(K=K, T=T, option_type=OptionType.CALL, quantity=qty)

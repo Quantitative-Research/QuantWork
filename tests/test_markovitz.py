@@ -3,14 +3,14 @@ from Models.Allocation import OptimalAllocation
 
 def test_optimal_allocation_us_stocks():
     tickers = ["AAPL", "MSFT", "GOOG", "AMZN"]
-    weights = OptimalAllocation(tickers, method="Markovitz", allow_short=False)
+    weights = OptimalAllocation(tickers, method="Markowitz", allow_short=False)
     assert len(weights) == len(tickers)
     assert pytest.approx(weights.sum(), abs=1e-6) == 1.0
     assert all(0 <= w <= 1 for w in weights)
 
 def test_optimal_allocation_french_stocks():
     tickers = ["ENGI.PA", "TTE.PA", "SAN.PA", "ACA.PA"]
-    weights = OptimalAllocation(tickers, method="Markovitz", allow_short=False)
+    weights = OptimalAllocation(tickers, method="Markowitz", allow_short=False)
     assert len(weights) == len(tickers)
     assert pytest.approx(weights.sum(), abs=1e-6) == 1.0
     assert all(0 <= w <= 1 for w in weights)
@@ -20,7 +20,7 @@ def test_optimal_allocation_french_stocks_with_target_return():
     target_return = 0.10
     weights = OptimalAllocation(
         tickers,
-        method="Markovitz",
+        method="Markowitz",
         allow_short=False,
         target_return=target_return
     )
@@ -30,13 +30,13 @@ def test_optimal_allocation_french_stocks_with_target_return():
 
 def test_optimal_allocation_single_asset():
     tickers = ["AAPL"]
-    weights = OptimalAllocation(tickers, method="Markovitz", allow_short=False)
+    weights = OptimalAllocation(tickers, method="Markowitz", allow_short=False)
     assert len(weights) == 1
     assert weights.iloc[0] == 1.0
 
 def test_two_assets_allocation():
     tickers = ["AAPL", "MSFT"]
-    weights = OptimalAllocation(tickers, method="Markovitz", allow_short=False)
+    weights = OptimalAllocation(tickers, method="Markowitz", allow_short=False)
     assert len(weights) == 2
     assert pytest.approx(weights.sum(), abs=1e-6) == 1.0
     assert all(0 <= w <= 1 for w in weights)

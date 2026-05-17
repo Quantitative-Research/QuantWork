@@ -53,9 +53,9 @@ class BlackScholes:
 
     def delta(self, K : float, T : float, sigma : float, option : OptionType = OptionType.CALL) -> float:
         d1 = self._d1(K, T, sigma)
-        if option == OptionType.CALL:
+        if option.value == OptionType.CALL.value:
             return np.exp(-self.q * T) * norm.cdf(d1)
-        elif option == OptionType.PUT:
+        elif option.value == OptionType.PUT.value:
             return np.exp(-self.q * T) * (norm.cdf(d1) - 1)
         else:
             raise ValueError("Invalid option type")
@@ -72,11 +72,11 @@ class BlackScholes:
         d1 = self._d1(K, T, sigma)
         d2 = self._d2(K, T, sigma)
         term1 = - (self.S * sigma * np.exp(-self.q * T) * norm.pdf(d1)) / (2 * np.sqrt(T))
-        if option == OptionType.CALL:
+        if option.value == OptionType.CALL.value:
             term2 = self.q * self.S * np.exp(-self.q * T) * norm.cdf(d1)
             term3 = -self.r * K * np.exp(-self.r * T) * norm.cdf(d2)
             return term1 + term2 + term3
-        elif option == OptionType.PUT:
+        elif option.value == OptionType.PUT.value:
             term2 = -self.q * self.S * np.exp(-self.q * T) * norm.cdf(-d1)
             term3 = self.r * K * np.exp(-self.r * T) * norm.cdf(-d2)
             return term1 + term2 + term3
@@ -85,9 +85,9 @@ class BlackScholes:
 
     def rho(self, K, T, sigma, option=OptionType.CALL) -> float:
         d2 = self._d2(K, T, sigma)
-        if option == OptionType.CALL:
+        if option.value == OptionType.CALL.value:
             return K * T * np.exp(-self.r * T) * norm.cdf(d2)
-        elif option == OptionType.PUT:
+        elif option.value == OptionType.PUT.value:
             return -K * T * np.exp(-self.r * T) * norm.cdf(-d2) 
         else:
             raise ValueError("Invalid option type")
