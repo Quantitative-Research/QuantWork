@@ -31,6 +31,9 @@ class Market:
 
         self._load_market_data()
 
+    def __repr__(self) -> str:
+        return f"Market(pricing_date={self.pricing_date.date()}, spot={self.spot}, maturities={self.maturities})"
+    
     def _load_market_data(self):
         df = pd.read_excel(self._xl_path, index_col=0)
 

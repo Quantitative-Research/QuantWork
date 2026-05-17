@@ -7,6 +7,9 @@ class CustomEuropeanPriceable(Priceable):
     def __init__(self, pricing_model: BlackModel, european_custom_option: EuropeanCustomOption):
         super().__init__(pricing_model, european_custom_option)
 
+    def __repr__(self) -> str:
+        return f"CustomEuropeanPriceable with model {self.model.__repr__()} and option {self.option.__repr__()}"
+    
     def price(self) -> float:
         total_price = 0.0
         for vanilla_option in self.option.list_calls:

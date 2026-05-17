@@ -27,3 +27,6 @@ class VixLike(EuropeanCustomOption):
         }
 
         super().__init__(booked)
+    
+    def __repr__(self) -> str:
+        return f"VixLike product with {len(self.list_calls)} calls and {len(self.list_puts)} puts, T={self.list_calls[0].T if self.list_calls else self.list_puts[0].T}"

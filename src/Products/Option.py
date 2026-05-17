@@ -17,13 +17,11 @@ class Option(AbstractOption):
         self.list_calls  = []
         self.list_puts   = []
 
-
 # === Vanilla Option class ===
 
 class VanillaOption(Option):
     def __init__(self, K, T, option_type=OptionType.CALL, quantity = 1):
         super().__init__(K, T, option_type, quantity)
 
-
-
-    
+    def __repr__(self) -> str:
+        return f"VanillaOption with K={self.K}, T={self.T}, type={self.option_type}, quantity={self.quantity}"
