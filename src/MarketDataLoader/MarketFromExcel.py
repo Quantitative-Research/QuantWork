@@ -50,7 +50,7 @@ class Market:
 
         self._forward_curve = forwards
         self._forward_curve_interpolated = interp1d(
-            self._maturities, forwards, kind="linear", fill_value="extrapolate" #TODO check fill_value correctness
+            self._maturities, forwards, kind="linear", fill_value="extrapolate", bounds_error=False
         )
 
         # Extract vol surface
@@ -105,10 +105,15 @@ class Market:
         """
         Get interpolated forward price for a given maturity (in years).
         """
+        if self._forward_curve_interpolated is None:
+            raise ValueError("Forward curve interpolator is not initialized.")
         return float(self._forward_curve_interpolated(T))
 
     def get_volatility(self, strike: float, maturity: float) -> float:
-
+        if self._vol_KT is None:
+            raise ValueError("Volatility surface is not initialized.")
+        if self._strikes is None or self._maturities is None:
+            raise ValueError("Strikes or maturities are not initialized.")
         # Clamp maturity within known bounds
         if maturity < self.maturities[0]:
             maturity = self.maturities[0]
@@ -193,4 +198,4 @@ class Market:
         """
         Get Discount Factor for a given maturity (in years).
         """
-        pass
+        return 1.0  # Assuming zero interest rate for simplicity #TODO implement actual discount factor 
