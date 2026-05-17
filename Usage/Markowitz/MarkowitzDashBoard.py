@@ -1,4 +1,4 @@
-from Usage.Markowitz.dashboard_callbacks import app
+from usage.Markowitz.dashboard_callbacks import app
 
 if __name__ == "__main__":
     app.run(debug=True, port=8050)

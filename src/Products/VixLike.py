@@ -18,10 +18,10 @@ class VixLike(EuropeanCustomOption):
         strike_grid = put_grid + call_grid
 
         booked = {
-            OptionType.CALL: {
+            OptionType.CALL.value: {
                 (K, T): 2 * quantity * interstrike / (K * K * T) for K in call_grid
             },
-            OptionType.PUT: {
+            OptionType.PUT.value: {
                 (K, T): 2 * quantity * interstrike / (K * K * T) for K in put_grid
             }
         }
