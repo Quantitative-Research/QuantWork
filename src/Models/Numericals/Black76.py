@@ -1,5 +1,5 @@
 from .BlackScholes import BlackScholes
-from src.Products.Enums import OptionType
+from Products.Enums import OptionType
 import math
 
 class Black76:
