@@ -28,8 +28,8 @@ def test_custom_european_option():
     put1 = (market.strikes[1], market.maturities[1])
 
     booked = {
-        OptionType.CALL: {call1: 2.0},
-        OptionType.PUT: {put1: 1.5}
+        OptionType.CALL.value: {call1: 2.0},
+        OptionType.PUT.value: {put1: 1.5}
     }
 
     custom_option = EuropeanCustomOption(booked)
@@ -52,11 +52,11 @@ def test_priceable_european_custom_option():
     put1 = (market.strikes[1], market.maturities[1])
 
     booked = {
-        OptionType.CALL: {
+        OptionType.CALL.value: {
             call1: 2.0,  # quantity
             call2: 1.0
         },
-        OptionType.PUT: {
+        OptionType.PUT.value: {
             put1: 1.5
         }
     }
@@ -76,8 +76,8 @@ def test_price_european_custom_option():
     put1 = (market.strikes[1], market.maturities[1])
 
     booked = {
-        OptionType.CALL: {call1: 2.0, call2: 1.0},
-        OptionType.PUT: {put1: 1.5}
+        OptionType.CALL.value: {call1: 2.0, call2: 1.0},
+        OptionType.PUT.value: {put1: 1.5}
     }
 
     custom_option = EuropeanCustomOption(booked)
