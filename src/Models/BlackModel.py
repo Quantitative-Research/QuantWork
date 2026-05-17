@@ -1,10 +1,10 @@
 import numpy as np
 from .Numericals.Black76 import Black76
 from .PricingModel import PricingModel
-from src.MarketDataLoader.MarketFromExcel import Market
-from src.Products.Enums import OptionType
-from src.Products.Option import VanillaOption
-from src.PricingResult.PricingResult import PricingResult
+from MarketDataLoader.MarketFromExcel import Market
+from Products.Enums import OptionType
+from Products.Option import VanillaOption
+from PricingResult.PricingResult import PricingResult
 
 class BlackModel(PricingModel):
     def __init__(self, market: Market):

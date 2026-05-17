@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from src.MarketDataLoader.MarketFromExcel import Market
-from src.Products.Option import VanillaOption
-from src.PricingResult.PricingResult import PricingResult
+from MarketDataLoader.MarketFromExcel import Market
+from Products.Option import VanillaOption
+from PricingResult.PricingResult import PricingResult
 
 class PricingModel(ABC):
     def __init__(self, market: Market):
