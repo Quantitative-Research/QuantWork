@@ -26,4 +26,4 @@ jobs:
 
       - name: Run tests
         run: |
-          PYTHONPATH=$GITHUB_WORKSPACE/src:$GITHUB_WORKSPACE/usage pytest tests/
+          PYTHONPATH=$GITHUB_WORKSPACE:$GITHUB_WORKSPACE/src python -m pytest tests/
