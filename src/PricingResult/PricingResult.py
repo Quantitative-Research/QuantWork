@@ -45,6 +45,10 @@ class PricingResult:
 
     __rmul__ = __mul__
 
+    def __repr__(self) -> str:
+        return (f"PricingResult(price={self.price:.4f}, delta={self.delta:.4f}, vega={self.vega:.4f}, "
+                f"theta={self.theta:.4f}, gamma={self.gamma:.4f}, vanna={self.vanna:.4f}, volga={self.volga:.4f})")
+    
     # ---------- helpers ----------
 
     def to_dict(self) -> Dict[str, float]:

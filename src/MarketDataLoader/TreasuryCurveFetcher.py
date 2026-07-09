@@ -9,6 +9,9 @@ class TreasuryCurveFetcher:
         self.curve = {}
         self.interpolator = None
 
+    def __repr__(self) -> str:
+        return f"TreasuryCurveFetcher(curve_points={len(self.curve)})"
+    
     def fetch_curve(self):
         """
         Fetch Treasury yields from Yahoo Finance.

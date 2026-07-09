@@ -14,3 +14,6 @@ class EuropeanCustomOption:
             VanillaOption(K=K, T=T, option_type=OptionType.PUT, quantity=qty)
             for (K, T), qty in puts.items()
         ]
+
+    def __repr__(self) -> str:
+        return f"EuropeanCustomOption with {len(self.list_calls)} calls and {len(self.list_puts)} puts"

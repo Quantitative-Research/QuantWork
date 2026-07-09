@@ -15,6 +15,9 @@ class Black76:
         self.discount_rate = discount_rate
         self.black = BlackScholes(S=F, r=0, q=0)
 
+    def __repr__(self) -> str:
+        return f"Black76 Model (F={self.F}, T={self.T}, discount_rate={self.discount_rate})"
+    
     def call_price(self, K : float, sigma : float) -> float:
         undiscounted = self.black.call_price(K, self.T, sigma)
         return math.exp(-self.discount_rate * self.T) * undiscounted

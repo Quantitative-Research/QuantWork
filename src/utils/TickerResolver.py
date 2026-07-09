@@ -179,6 +179,12 @@ class TickerResolver:
     # ---------------------------------------------------------------------
     # Internals
     # ---------------------------------------------------------------------
+    def __init__(self):
+        pass
+
+    def __repr__(self) -> str:
+        return "TickerResolver with manual mappings for popular stocks and indexes"
+    
     @staticmethod
     def _normalize(s: str) -> str:
         """Normalize text: lowercase, remove accents, trim."""

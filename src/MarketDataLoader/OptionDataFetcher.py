@@ -13,6 +13,9 @@ class OptionDataFetcher:
         self.spot_price = None
         self.forward_curve = None
     
+    def __repr__(self) -> str:
+        return f"OptionDataFetcher(ticker={self.ticker})"
+
     def build_market(self):
         """
         Fetch option data from Yahoo Finance and build the forward curve in one step.
@@ -177,6 +180,9 @@ class OptionMaturity:
         self._build_cleaned_smile()
         self._project_convex_smile(method='slopes')  # Default method for convex projection
 
+    def __repr__(self) -> str:
+        return f"OptionMaturity(expiry={self.expiry.date()})"
+    
     def _clean_data(self):
         """Remove NaN/invalid implied volatility rows."""
         for df in [self.calls, self.puts]:
@@ -227,8 +233,7 @@ class OptionMaturity:
     @property
     def mean_otm_iv(self):
         """Returns the average OTM implied volatility."""
-        iv_values = [iv for _, iv in self.otm_iv_set]
-        return float(np.mean(iv_values)) if iv_values else np.nan
+        return self.otm_iv_df['impliedVolatility'].mean() if not self.otm_iv_df.empty else np.nan
 
     def get_strikes(self):
         return self.calls['strike'].tolist(), self.puts['strike'].tolist()
