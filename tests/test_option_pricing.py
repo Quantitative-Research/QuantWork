@@ -6,6 +6,7 @@ from Models.BlackModel import BlackModel
 from Products.Option import VanillaOption
 from Products.EuropeanCustomOption import EuropeanCustomOption
 from Products.Enums import OptionType
+from Products.CommonOption import VanillaCall
 
 def test_VanillaOptionPricing():
     xl_file = data_path('spx_1_nov_24.xlsx')
@@ -16,7 +17,12 @@ def test_VanillaOptionPricing():
     call = VanillaOption(K=mkt.spot, T=1)
     price = black_model.PriceVanillaOption(call)
 
+    call_for_pcb = VanillaCall(K=mkt.spot, T=1)
+    priceable = CustomEuropeanPriceable(black_model, call_for_pcb)
+    price_from_priceable = priceable.price()
+
     assert price > 0, "Vanilla call option price should be positive"
+    assert price == price_from_priceable, "Prices should match"
 
 
 def test_custom_european_option():

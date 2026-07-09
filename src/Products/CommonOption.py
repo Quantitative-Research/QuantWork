@@ -1,6 +1,30 @@
 from Products.Enums import OptionType
 from Products.EuropeanCustomOption import EuropeanCustomOption
 
+class VanillaCall(EuropeanCustomOption):
+    def __init__(self, K, T, quantity=1):
+        booked = {
+            OptionType.CALL.value: {
+                (K, T): quantity
+            }
+        }
+        super().__init__(booked)
+
+    def __repr__(self) -> str:
+        return f"VanillaCall with K={self.list_calls[0].K}, T={self.list_calls[0].T}, quantity={self.list_calls[0].quantity}"
+
+class VanillaPut(EuropeanCustomOption):
+    def __init__(self, K, T, quantity=1):
+        booked = {
+            OptionType.PUT.value: {
+                (K, T): quantity
+            }
+        }
+        super().__init__(booked)
+
+    def __repr__(self) -> str:
+        return f"VanillaPut with K={self.list_puts[0].K}, T={self.list_puts[0].T}, quantity={self.list_puts[0].quantity}"
+
 class Straddle(EuropeanCustomOption):
     def __init__(self, K, T, quantity=1):
         booked = {

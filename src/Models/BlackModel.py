@@ -11,7 +11,7 @@ class BlackModel(PricingModel):
         super().__init__(market)
 
     def __repr__(self) -> str:
-        return f"BlackModel built on {self.market.__repr__()}"
+        return f"BlackModel with (S={self.market.spot})"
     
     def GeneratePaths(self, number_paths : int, T : float, frequency): # override
         pass
